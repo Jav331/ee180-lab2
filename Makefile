@@ -1,6 +1,6 @@
 # Set compiler args
 CC=g++
-CFLAGS=-Wall -c -03 -mcpu=cortex-a9 -mfpu=neon-vfpv3-fp16 -mfloat-abi=hard -ffast-math
+CFLAGS=-Wall -c -O3 -mcpu=cortex-a9 -mfpu=neon-vfpv3-fp16 -mfloat-abi=hard -ffast-math
 LDFLAGS=
 LDLIBS=-L /usr/lib $$(pkg-config --cflags --libs opencv) -pthread
 ifeq ($(shell arch), armv7l)
