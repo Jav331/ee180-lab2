@@ -3,83 +3,72 @@
 #include <arm_neon.h>
 using namespace cv;
 
+
+// defines
+
+#define BLUE_SCALE 29
+#define GREEN_SCALE 150
+#define RED_SCALE 77
 /*******************************************
  * Model: grayScale
  * Input: Mat img
  * Output: None directly. Modifies a ref parameter img_gray_out
  * Desc: This module converts the image to grayscale
  ********************************************/
-// void grayScale(Mat& img, Mat& img_gray_out)
-// {
-//   double color;
-
-//   // #define IMG_WIDTH 640
-//   // #define IMG_HEIGHT 480
-//   // gray = 0.299*R + 0.587*G + 0.114*B
-
-//   // Convert to grayscale
-//   for (int i=0; i<img.rows; i++) {
-//     for (int j=0; j<img.cols; j++) {
-//       color = .114*img.data[STEP0*i + STEP1*j] +
-//               .587*img.data[STEP0*i + STEP1*j + 1] +
-//               .299*img.data[STEP0*i + STEP1*j + 2];
-//       img_gray_out.data[IMG_WIDTH*i + j] = color;
-//     }
-//   }
-//   // this comes out to 307,200. divided by 16 is 0. so traversing will not leave us out of bounds
-//   int total_pixel = img.rows * img.cols; 
-
-//   for (int i = 0; total_pixel; i += 16) {
-//     //load into neon vector
-
-//     //compute the math
-
-//     // store
-//   }
-// }
-
 void grayScale(Mat& img, Mat& img_gray_out)
 {
-    int total_pixel = img.rows * img.cols; 
-    uint8_t* src_ptr = img.data;
-    uint8_t* dst_ptr = img_gray_out.data;
+  double color;
 
-    // Define weights as 8-bit constants (scaled by 256)
-    // We use uint8 lanes but will widen to 16-bit for math
-    uint8x8_t w_blue  = vdup_n_u8(29);  // 0.114 * 256
-    uint8x8_t w_green = vdup_n_u8(150); // 0.587 * 256
-    uint8x8_t w_red   = vdup_n_u8(77);  // 0.299 * 256
+  // #define IMG_WIDTH 640
+  // #define IMG_HEIGHT 480
+  // gray = 0.299*R + 0.587*G + 0.114*B
 
-    for (int i = 0; i < total_pixel; i += 16) {
-        // 1. Load 16 pixels (48 bytes: BGRBGR...)
-        // vld3q_u8 de-interleaves into 3 registers (16 bytes each)
-        uint8x16x3_t v_img = vld3q_u8(src_ptr + (i * 3));
+  // Convert to grayscale
+  // for (int i=0; i<img.rows; i++) {
+  //   for (int j=0; j<img.cols; j++) {
+  //     color = .114*img.data[STEP0*i + STEP1*j] +
+  //             .587*img.data[STEP0*i + STEP1*j + 1] +
+  //             .299*img.data[STEP0*i + STEP1*j + 2];
+  //     img_gray_out.data[IMG_WIDTH*i + j] = color;
+  //   }
+  // }
 
-        // 2. Process first 8 pixels (Low part)
-        // Widen R, G, B to 16-bit and multiply by weights
-        uint16x8_t blue_low  = vmull_u8(vget_low_u8(v_img.val[0]), w_blue);
-        uint16x8_t green_low = vmull_u8(vget_low_u8(v_img.val[1]), w_green);
-        uint16x8_t red_low   = vmull_u8(vget_low_u8(v_img.val[2]), w_red);
+  // have to split into lower and upper then combine?
+  // each pixel is 8 bits? (16 * 8 = 128)
+  // when we mulitply we should keep the product in a double width reg
 
-        // Sum them: Blue + Green + Red
-        uint16x8_t gray_low = vaddq_u16(blue_low, vaddq_u16(green_low, red_low));
-        
-        // 3. Process next 8 pixels (High part)
-        uint16x8_t blue_high  = vmull_u8(vget_high_u8(v_img.val[0]), w_blue);
-        uint16x8_t green_high = vmull_u8(vget_high_u8(v_img.val[1]), w_green);
-        uint16x8_t red_high   = vmull_u8(vget_high_u8(v_img.val[2]), w_red);
+  // load the bgr values as integers to avoid using floats. floats are bad
 
-        uint16x8_t gray_high = vaddq_u16(blue_high, vaddq_u16(green_high, red_high));
+  uint8x8_t blue_w = vdup_n_u8(BLUE_SCALE);
+  uint8x8_t green_w = vdup_n_u8(GREEN_SCALE);
+  uint8x8_t red_w = vdup_n_u8(RED_SCALE);
 
-        // 4. Narrow back down to 8-bit
-        // vshrn_n_u16 shifts right by 8 (dividing by 256) and narrows to 8-bit
-        uint8x8_t res_low  = vshrn_n_u16(gray_low, 8);
-        uint8x8_t res_high = vshrn_n_u16(gray_high, 8);
+  // this comes out to 307,200. divided by 16 is 0. so traversing will not leave us out of bounds
+  // also this mean that each pixel gas a "sub array" that has [BGR]. So the total total is the total_pixel * 3
 
-        // 5. Store 16 finished grayscale pixels
-        uint8x16_t final_gray = vcombine_u8(res_low, res_high);
-        vst1q_u8(dst_ptr + i, final_gray);
-    }
+  int total_pixel = img.rows * img.cols; 
+  
+  uint8_t s_ptr = img.data;
+  uint8_t d_ptr = img_gray_out.data;
+
+  // striding 16 to optimize. 1 pixel is 1 byte of data that contains bgr so 3 bytes of that. 16 * 3 is 48 total bytes.
+  // data is interleved so i need to strip the bgr into there own lanes?
+  // also i need to have this upper and lower logic to account for the multiply?
+  for (int i = 0; total_pixel; i += 16) {
+    // need to keep track of the pixels as we jumo so do we use a pointer?
+    // the array that we grab has 48 total bytes with BGRBGRBGR... values, so 16 pixels is actaull 48 bytes worht of data
+    
+    // to get 16 pixels it is actuall 48 bytes of data that we will put into 3 vectors
+    // ptr arithmatic is supposed to traverse every 48 bytes, holding 16 bytes in each reg so it we will have to use the q
+    uint8x16x3_t bgr_vals = vld3q_u8(s_ptr + (i * 3)) // if i = 0 then it will load first 16 pix
+
+    // strat will be similar to 271 where we have a double accum storage for the upper and lower
+    // multiplying whole will exceed 256 bits? I think this is bc if we had 128 bit then the sum will need to be 256 as padding/buffer so if we split into 2 64 then we can buffer with 128 accum
+
+    // first do the lower accum, type is 16 bits and 8 lanes since we are splitting the 16 pixels into 2 8's
+
+    uint16_8_t accum_lower = 
+  }
 }
 
 /*******************************************
