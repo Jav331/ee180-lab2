@@ -89,7 +89,7 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
   //   uint8x16_t result = vcombine_u8(result_lower, result_upper); 
   //   vst1q_u8(d_ptr + i, result);
-  }
+  // }
 }
 
 /*******************************************
