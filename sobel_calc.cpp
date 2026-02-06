@@ -17,28 +17,8 @@ using namespace cv;
  ********************************************/
 void grayScale(Mat& img, Mat& img_gray_out)
 {
-  // double color;
-
-  // // #define IMG_WIDTH 640
-  // // #define IMG_HEIGHT 480
-  // // gray = 0.299*R + 0.587*G + 0.114*B
-
-  // // Convert to grayscale
-  // for (int i=0; i<img.rows; i++) {
-  //   for (int j=0; j<img.cols; j++) {
-  //     color = .114*img.data[STEP0*i + STEP1*j] +
-  //             .587*img.data[STEP0*i + STEP1*j + 1] +
-  //             .299*img.data[STEP0*i + STEP1*j + 2];
-  //     img_gray_out.data[IMG_WIDTH*i + j] = color;
-  //   }
-  // }
-
-  // have to split into lower and upper then combine?
-  // each pixel is 8 bits? (16 * 8 = 128)
-  // when we mulitply we should keep the product in a double width reg
-
   // load the bgr values as integers to avoid using floats. floats are bad
-  
+
   uint8x8_t blue_w = vdup_n_u8(BLUE_SCALE);
   uint8x8_t green_w = vdup_n_u8(GREEN_SCALE);
   uint8x8_t red_w = vdup_n_u8(RED_SCALE);
@@ -51,13 +31,13 @@ void grayScale(Mat& img, Mat& img_gray_out)
   uint8_t *s_ptr = img.data;
   uint8_t *d_ptr = img_gray_out.data;
 
-  // // striding 16 to optimize. 1 pixel is 1 byte of data that contains bgr so 3 bytes of that. 16 * 3 is 48 total bytes.
-  // // data is interleved so i need to strip the bgr into there own lanes?
-  // // also i need to have this upper and lower logic to account for the multiply?
+  // striding 16 to optimize. 1 pixel is 1 byte of data that contains bgr so 3 bytes of that. 16 * 3 is 48 total bytes.
+  // data is interleved so i need to strip the bgr into there own lanes?
+  // also i need to have this upper and lower logic to account for the multiply?
   for (int i = 0; i < total_pixel; i += 16) {
     // need to keep track of the pixels as we jumo so do we use a pointer?
     // the array that we grab has 48 total bytes with BGRBGRBGR... values, so 16 pixels is actaull 48 bytes worht of data
-      
+    
     // to get 16 pixels it is actuall 48 bytes of data that we will put into 3 vectors
     // ptr arithmatic is supposed to traverse every 48 bytes, holding 16 bytes in each reg so it we will have to use the q
     uint8x16x3_t bgr_vals = vld3q_u8(s_ptr + (i * 3)); // if i = 0 then it will load first 16 pix
@@ -87,9 +67,10 @@ void grayScale(Mat& img, Mat& img_gray_out)
     uint8x8_t result_lower = vshrn_n_u16(accum_gray_low, 8);
     uint8x8_t result_upper = vshrn_n_u16(accum_gray_upper, 8);
 
-    uint8x16_t result = vcombine_u8(result_lower, result_upper); 
+    uint8x16_t result = vcombine_u8(result_lower, result_upper);
+
     vst1q_u8(d_ptr + i, result);
-    }
+  }
   }
 
 /*******************************************
