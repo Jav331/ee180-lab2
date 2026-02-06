@@ -17,7 +17,7 @@ using namespace cv;
  ********************************************/
 void grayScale(Mat& img, Mat& img_gray_out)
 {
-  double color;
+  // double color;
 
   // #define IMG_WIDTH 640
   // #define IMG_HEIGHT 480
