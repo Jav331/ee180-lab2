@@ -87,8 +87,7 @@ void grayScale(Mat& img, Mat& img_gray_out)
     uint8x8_t result_lower = vshrn_n_u16(accum_gray_low, 8);
     uint8x8_t result_upper = vshrn_n_u16(accum_gray_upper, 8);
 
-    uint8x8_t result = vcombine_u8(result_lower, result_upper);
-
+    uint8x16_t result = vcombine_u8(result_lower, result_upper); 
     vst1q_u8(d_ptr + i, result);
   }
 }
