@@ -67,7 +67,29 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
     // first do the lower accum, type is 16 bits and 8 lanes since we are splitting the 16 pixels into 2 8's
 
-    uint16_8_t accum_lower = 
+    uint16_8_t accum_lower_blue = vmull_u8(vget_low_u8(v_img.val[0]), blue_w);
+    uint16_8_t accum_lower_green = vmull_u8(vget_low_u8(v_img.val[1]), green_w);
+    uint16_8_t accum_lower_red = vmull_u8(vget_low_u8(v_img.val[2]), green_w);
+
+    uint16_8_t accum_gray_low_temp= vaddq_u16(accum_lower_blue, accum_lower_green);
+    uint16_8_t accum_gray_low = vaddq_u16(accum_gray_low_temp, accum_lower_red);
+
+    // now we can do the upper
+
+    uint16_8_t accum_upper_blue = vmull_u8(vget_high_u8(v_img.val[0]), blue_w);
+    uint16_8_t accum_upper_green = vmull_u8(vget_high_u8(v_img.val[1]), green_w);
+    uint16_8_t accum_upper_red = vmull_u8(vget_high_u8(v_img.val[2]), green_w);
+
+    uint16_8_t accum_gray_upper_temp= vaddq_u16(accum_upper_blue, accum_upper_green);
+    uint16_8_t accum_gray_upper = vaddq_u16(accum_gray_upper_temp, accum_upper_red);
+
+    // convert to floats
+    uint8x8_t result_lower = vshrn_n_u16(accum_gray_low, 8);
+    uint8x8_t result_upper = vshrn_n_u16(accum_gray_upper, 8);
+
+    uint8x8_t result = vcombine_u8(result_lower, result_upper);
+
+    vst1q_u8(dst_ptr + i, result);
   }
 }
 
