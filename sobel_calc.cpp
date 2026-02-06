@@ -48,40 +48,40 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
   int total_pixel = img.rows * img.cols; 
   
-  uint8_t s_ptr = img.data;
-  uint8_t d_ptr = img_gray_out.data;
+  uint8_t *s_ptr = img.data;
+  uint8_t *d_ptr = img_gray_out.data;
 
   // striding 16 to optimize. 1 pixel is 1 byte of data that contains bgr so 3 bytes of that. 16 * 3 is 48 total bytes.
   // data is interleved so i need to strip the bgr into there own lanes?
   // also i need to have this upper and lower logic to account for the multiply?
-  for (int i = 0; total_pixel; i += 16) {
+  for (int i = 0; i < total_pixel; i += 16) {
     // need to keep track of the pixels as we jumo so do we use a pointer?
     // the array that we grab has 48 total bytes with BGRBGRBGR... values, so 16 pixels is actaull 48 bytes worht of data
     
     // to get 16 pixels it is actuall 48 bytes of data that we will put into 3 vectors
     // ptr arithmatic is supposed to traverse every 48 bytes, holding 16 bytes in each reg so it we will have to use the q
-    uint8x16x3_t bgr_vals = vld3q_u8(s_ptr + (i * 3)) // if i = 0 then it will load first 16 pix
+    uint8x16x3_t bgr_vals = vld3q_u8(s_ptr + (i * 3)); // if i = 0 then it will load first 16 pix
 
     // strat will be similar to 271 where we have a double accum storage for the upper and lower
     // multiplying whole will exceed 256 bits? I think this is bc if we had 128 bit then the sum will need to be 256 as padding/buffer so if we split into 2 64 then we can buffer with 128 accum
 
     // first do the lower accum, type is 16 bits and 8 lanes since we are splitting the 16 pixels into 2 8's
 
-    uint16_8_t accum_lower_blue = vmull_u8(vget_low_u8(v_img.val[0]), blue_w);
-    uint16_8_t accum_lower_green = vmull_u8(vget_low_u8(v_img.val[1]), green_w);
-    uint16_8_t accum_lower_red = vmull_u8(vget_low_u8(v_img.val[2]), green_w);
+    uint16x8_t accum_lower_blue = vmull_u8(vget_low_u8(bgr_vals.val[0]), blue_w);
+    uint16x8_t accum_lower_green = vmull_u8(vget_low_u8(bgr_vals.val[1]), green_w);
+    uint16x8_t accum_lower_red = vmull_u8(vget_low_u8(bgr_vals.val[2]), red_w);
 
-    uint16_8_t accum_gray_low_temp= vaddq_u16(accum_lower_blue, accum_lower_green);
-    uint16_8_t accum_gray_low = vaddq_u16(accum_gray_low_temp, accum_lower_red);
+    uint16x8_t accum_gray_low_temp= vaddq_u16(accum_lower_blue, accum_lower_green);
+    uint16x8_t accum_gray_low = vaddq_u16(accum_gray_low_temp, accum_lower_red);
 
     // now we can do the upper
 
-    uint16_8_t accum_upper_blue = vmull_u8(vget_high_u8(v_img.val[0]), blue_w);
-    uint16_8_t accum_upper_green = vmull_u8(vget_high_u8(v_img.val[1]), green_w);
-    uint16_8_t accum_upper_red = vmull_u8(vget_high_u8(v_img.val[2]), green_w);
+    uint16x8_t accum_upper_blue = vmull_u8(vget_high_u8(bgr_vals.val[0]), blue_w);
+    uint16x8_t accum_upper_green = vmull_u8(vget_high_u8(bgr_vals.val[1]), green_w);
+    uint16x8_t accum_upper_red = vmull_u8(vget_high_u8(bgr_vals.val[2]), red_w);
 
-    uint16_8_t accum_gray_upper_temp= vaddq_u16(accum_upper_blue, accum_upper_green);
-    uint16_8_t accum_gray_upper = vaddq_u16(accum_gray_upper_temp, accum_upper_red);
+    uint16x8_t accum_gray_upper_temp= vaddq_u16(accum_upper_blue, accum_upper_green);
+    uint16x8_t accum_gray_upper = vaddq_u16(accum_gray_upper_temp, accum_upper_red);
 
     // convert to floats
     uint8x8_t result_lower = vshrn_n_u16(accum_gray_low, 8);
@@ -89,7 +89,7 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
     uint8x8_t result = vcombine_u8(result_lower, result_upper);
 
-    vst1q_u8(dst_ptr + i, result);
+    vst1q_u8(d_ptr + i, result);
   }
 }
 
