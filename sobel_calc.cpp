@@ -38,7 +38,7 @@ void grayScale(Mat& img, Mat& img_gray_out)
   // when we mulitply we should keep the product in a double width reg
 
   // load the bgr values as integers to avoid using floats. floats are bad
-
+  
   uint8x8_t blue_w = vdup_n_u8(BLUE_SCALE);
   uint8x8_t green_w = vdup_n_u8(GREEN_SCALE);
   uint8x8_t red_w = vdup_n_u8(RED_SCALE);
@@ -48,8 +48,8 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
   int total_pixel = img.rows * img.cols; 
   
-  int8_t *s_ptr = img.data;
-  int8_t *d_ptr = img_gray_out.data;
+  uint8_t *s_ptr = img.data;
+  uint8_t *d_ptr = img_gray_out.data;
 
   // // striding 16 to optimize. 1 pixel is 1 byte of data that contains bgr so 3 bytes of that. 16 * 3 is 48 total bytes.
   // // data is interleved so i need to strip the bgr into there own lanes?
@@ -89,8 +89,8 @@ void grayScale(Mat& img, Mat& img_gray_out)
 
     uint8x16_t result = vcombine_u8(result_lower, result_upper); 
     vst1q_u8(d_ptr + i, result);
-   }
-}
+    }
+  }
 
 /*******************************************
  * Model: sobelCalc
