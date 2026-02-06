@@ -154,20 +154,17 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
       uint8x8_t top_left = vld1_u8(&img_data[IMG_WIDTH*(i-1) + (j-1)]);
       uint8x8_t top_mid = vld1_u8(&img_data[IMG_WIDTH*(i-1) + j]);
       uint8x8_t top_right = vld1_u8(&img_data[IMG_WIDTH*(i-1) + (j+1)]);
-      
       // Row i
       uint8x8_t mid_left = vld1_u8(&img_data[IMG_WIDTH*i + (j-1)]);
       uint8x8_t mid_right = vld1_u8(&img_data[IMG_WIDTH*i + (j+1)]);
-      
       // Row i+1
       uint8x8_t bot_left = vld1_u8(&img_data[IMG_WIDTH*(i+1) + (j-1)]);
       uint8x8_t bot_mid = vld1_u8(&img_data[IMG_WIDTH*(i+1) + j]);
       uint8x8_t bot_right = vld1_u8(&img_data[IMG_WIDTH*(i+1) + (j+1)]);
-      
       // Calculate Gx = [-1 0 1; -2 0 2; -1 0 1]
       // Gx = -top_left + top_right - 2*mid_left + 2*mid_right - bot_left + bot_right
       
-      // Promote to 16-bit for calculations
+      //16-bit for calculations
       int16x8_t top_left_s = vreinterpretq_s16_u16(vmovl_u8(top_left));
       int16x8_t top_right_s = vreinterpretq_s16_u16(vmovl_u8(top_right));
       int16x8_t mid_left_s = vreinterpretq_s16_u16(vmovl_u8(mid_left));
@@ -176,7 +173,6 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
       int16x8_t bot_right_s = vreinterpretq_s16_u16(vmovl_u8(bot_right));
       int16x8_t top_mid_s = vreinterpretq_s16_u16(vmovl_u8(top_mid));
       int16x8_t bot_mid_s = vreinterpretq_s16_u16(vmovl_u8(bot_mid));
-      
       // Calculate Gx
       int16x8_t gx_s = vsubq_s16(top_right_s, top_left_s);
       int16x8_t mid_diff = vsubq_s16(mid_right_s, mid_left_s);
@@ -184,10 +180,8 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
       gx_s = vaddq_s16(gx_s, mid_diff);
       int16x8_t bot_diff = vsubq_s16(bot_right_s, bot_left_s);
       gx_s = vaddq_s16(gx_s, bot_diff);
-      
       // Take absolute value
       int16x8_t gx_abs = vabsq_s16(gx_s);
-      
       // Calculate Gy = [-1 -2 -1; 0 0 0; 1 2 1]
       // Gy = -top_left - 2*top_mid - top_right + bot_left + 2*bot_mid + bot_right
       int16x8_t gy_s = vsubq_s16(bot_left_s, top_left_s);
