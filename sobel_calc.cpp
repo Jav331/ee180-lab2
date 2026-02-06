@@ -23,7 +23,7 @@ void grayScale(Mat& img, Mat& img_gray_out)
   // #define IMG_HEIGHT 480
   // gray = 0.299*R + 0.587*G + 0.114*B
 
-  Convert to grayscale
+  // Convert to grayscale
   for (int i=0; i<img.rows; i++) {
     for (int j=0; j<img.cols; j++) {
       color = .114*img.data[STEP0*i + STEP1*j] +
