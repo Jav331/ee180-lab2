@@ -101,52 +101,150 @@ void grayScale(Mat& img, Mat& img_gray_out)
  *  direction, calculates the gradient in the y direction and sum it with Gx
  *  to finish the Sobel calculation
  ********************************************/
+// void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
+// {
+//   Mat img_outx = img_gray.clone();
+//   Mat img_outy = img_gray.clone();
+
+//   // Apply Sobel filter to black & white image
+//   unsigned short sobel;
+
+//   // Calculate the x convolution
+//   for (int i=1; i<img_gray.rows; i++) {
+//     for (int j=1; j<img_gray.cols; j++) {
+//       sobel = abs(img_gray.data[IMG_WIDTH*(i-1) + (j-1)] -
+// 		  img_gray.data[IMG_WIDTH*(i+1) + (j-1)] +
+// 		  2*img_gray.data[IMG_WIDTH*(i-1) + (j)] -
+// 		  2*img_gray.data[IMG_WIDTH*(i+1) + (j)] +
+// 		  img_gray.data[IMG_WIDTH*(i-1) + (j+1)] -
+// 		  img_gray.data[IMG_WIDTH*(i+1) + (j+1)]);
+
+//       sobel = (sobel > 255) ? 255 : sobel;
+//       img_outx.data[IMG_WIDTH*(i) + (j)] = sobel;
+//     }
+//   }
+
+//   // Calc the y convolution
+//   for (int i=1; i<img_gray.rows; i++) {
+//     for (int j=1; j<img_gray.cols; j++) {
+//      sobel = abs(img_gray.data[IMG_WIDTH*(i-1) + (j-1)] -
+// 		   img_gray.data[IMG_WIDTH*(i-1) + (j+1)] +
+// 		   2*img_gray.data[IMG_WIDTH*(i) + (j-1)] -
+// 		   2*img_gray.data[IMG_WIDTH*(i) + (j+1)] +
+// 		   img_gray.data[IMG_WIDTH*(i+1) + (j-1)] -
+// 		   img_gray.data[IMG_WIDTH*(i+1) + (j+1)]);
+
+//      sobel = (sobel > 255) ? 255 : sobel;
+
+//      img_outy.data[IMG_WIDTH*(i) + j] = sobel;
+//     }
+//   }
+
+//   // Combine the two convolutions into the output image
+//   for (int i=1; i<img_gray.rows; i++) {
+//     for (int j=1; j<img_gray.cols; j++) {
+//       sobel = img_outx.data[IMG_WIDTH*(i) + j] +
+// 	img_outy.data[IMG_WIDTH*(i) + j];
+//       sobel = (sobel > 255) ? 255 : sobel;
+//       img_sobel_out.data[IMG_WIDTH*(i) + j] = sobel;
+//     }
+//   }
+// }
+
 void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
-{
-  Mat img_outx = img_gray.clone();
-  Mat img_outy = img_gray.clone();
-
-  // Apply Sobel filter to black & white image
-  unsigned short sobel;
-
-  // Calculate the x convolution
-  for (int i=1; i<img_gray.rows; i++) {
-    for (int j=1; j<img_gray.cols; j++) {
-      sobel = abs(img_gray.data[IMG_WIDTH*(i-1) + (j-1)] -
-		  img_gray.data[IMG_WIDTH*(i+1) + (j-1)] +
-		  2*img_gray.data[IMG_WIDTH*(i-1) + (j)] -
-		  2*img_gray.data[IMG_WIDTH*(i+1) + (j)] +
-		  img_gray.data[IMG_WIDTH*(i-1) + (j+1)] -
-		  img_gray.data[IMG_WIDTH*(i+1) + (j+1)]);
-
-      sobel = (sobel > 255) ? 255 : sobel;
-      img_outx.data[IMG_WIDTH*(i) + (j)] = sobel;
-    }
-  }
-
-  // Calc the y convolution
-  for (int i=1; i<img_gray.rows; i++) {
-    for (int j=1; j<img_gray.cols; j++) {
-     sobel = abs(img_gray.data[IMG_WIDTH*(i-1) + (j-1)] -
-		   img_gray.data[IMG_WIDTH*(i-1) + (j+1)] +
-		   2*img_gray.data[IMG_WIDTH*(i) + (j-1)] -
-		   2*img_gray.data[IMG_WIDTH*(i) + (j+1)] +
-		   img_gray.data[IMG_WIDTH*(i+1) + (j-1)] -
-		   img_gray.data[IMG_WIDTH*(i+1) + (j+1)]);
-
-     sobel = (sobel > 255) ? 255 : sobel;
-
-     img_outy.data[IMG_WIDTH*(i) + j] = sobel;
-    }
-  }
-
-  // Combine the two convolutions into the output image
-  for (int i=1; i<img_gray.rows; i++) {
-    for (int j=1; j<img_gray.cols; j++) {
-      sobel = img_outx.data[IMG_WIDTH*(i) + j] +
-	img_outy.data[IMG_WIDTH*(i) + j];
-      sobel = (sobel > 255) ? 255 : sobel;
-      img_sobel_out.data[IMG_WIDTH*(i) + j] = sobel;
-    }
-  }
-}
+39{
+40  //  Loop Fusion
+41  
+43  
+44  // 
+45  // Process 8 pixels at a time using NEON intrinsics
+46  
+47  uint8_t* img_data = img_gray.data;
+48  uint8_t* out_data = img_sobel_out.data;
+49  
+50  // Process the image row by row
+51  for (int i = 1; i < img_gray.rows - 1; i++) {
+52    int j = 1;
+53    
+54    // Process 8 pixels at a time with NEON
+55    for (; j <= img_gray.cols - 9; j += 8) {
+57      // Row i-1
+58      uint8x8_t top_left = vld1_u8(&img_data[IMG_WIDTH*(i-1) + (j-1)]);
+59      uint8x8_t top_mid = vld1_u8(&img_data[IMG_WIDTH*(i-1) + j]);
+60      uint8x8_t top_right = vld1_u8(&img_data[IMG_WIDTH*(i-1) + (j+1)]);
+61      
+62      // Row i
+63      uint8x8_t mid_left = vld1_u8(&img_data[IMG_WIDTH*i + (j-1)]);
+64      uint8x8_t mid_right = vld1_u8(&img_data[IMG_WIDTH*i + (j+1)]);
+65      
+66      // Row i+1
+67      uint8x8_t bot_left = vld1_u8(&img_data[IMG_WIDTH*(i+1) + (j-1)]);
+68      uint8x8_t bot_mid = vld1_u8(&img_data[IMG_WIDTH*(i+1) + j]);
+69      uint8x8_t bot_right = vld1_u8(&img_data[IMG_WIDTH*(i+1) + (j+1)]);
+70      
+71     
+76      int16x8_t top_left_s = vreinterpretq_s16_u16(vmovl_u8(top_left));
+77      int16x8_t top_right_s = vreinterpretq_s16_u16(vmovl_u8(top_right));
+78      int16x8_t mid_left_s = vreinterpretq_s16_u16(vmovl_u8(mid_left));
+79      int16x8_t mid_right_s = vreinterpretq_s16_u16(vmovl_u8(mid_right));
+80      int16x8_t bot_left_s = vreinterpretq_s16_u16(vmovl_u8(bot_left));
+81      int16x8_t bot_right_s = vreinterpretq_s16_u16(vmovl_u8(bot_right));
+82      int16x8_t top_mid_s = vreinterpretq_s16_u16(vmovl_u8(top_mid));
+83      int16x8_t bot_mid_s = vreinterpretq_s16_u16(vmovl_u8(bot_mid));
+84      
+85      // Calculate Gx
+86      int16x8_t gx_s = vsubq_s16(top_right_s, top_left_s);
+87      int16x8_t mid_diff = vsubq_s16(mid_right_s, mid_left_s);
+88      mid_diff = vshlq_n_s16(mid_diff, 1); // multiply by 2
+89      gx_s = vaddq_s16(gx_s, mid_diff);
+90      int16x8_t bot_diff = vsubq_s16(bot_right_s, bot_left_s);
+91      gx_s = vaddq_s16(gx_s, bot_diff);
+92      
+93      // Take absolute value
+94      int16x8_t gx_abs = vabsq_s16(gx_s);
+95      
+96      // Calculate Gy = [-1 -2 -1; 0 0 0; 1 2 1]
+97      // Gy = -top_left - 2*top_mid - top_right + bot_left + 2*bot_mid + bot_right
+98      int16x8_t gy_s = vsubq_s16(bot_left_s, top_left_s);
+99      int16x8_t vert_diff = vsubq_s16(bot_mid_s, top_mid_s);
+100      vert_diff = vshlq_n_s16(vert_diff, 1); // multiply by 2
+101      gy_s = vaddq_s16(gy_s, vert_diff);
+102      int16x8_t right_diff = vsubq_s16(bot_right_s, top_right_s);
+103      gy_s = vaddq_s16(gy_s, right_diff);
+104      
+105      // Take absolute value
+106      int16x8_t gy_abs = vabsq_s16(gy_s);
+107      
+108      // Combine Gx and Gy: sobel = |Gx| + |Gy|
+109      // Convert back to unsigned for addition
+110      uint16x8_t sobel = vaddq_u16(vreinterpretq_u16_s16(gx_abs), vreinterpretq_u16_s16(gy_abs));
+111      
+112      // Saturate to 255
+113      uint8x8_t result = vqmovn_u16(sobel);
+114      
+115      // Store result
+116      vst1_u8(&out_data[IMG_WIDTH*i + j], result);
+117    }
+118    
+120    for (; j < img_gray.cols - 1; j++) {
+121      // Calculate Gx
+122      int gx = abs(
+123        img_data[IMG_WIDTH*(i-1) + (j-1)] - img_data[IMG_WIDTH*(i-1) + (j+1)] +
+124        2*img_data[IMG_WIDTH*i + (j-1)] - 2*img_data[IMG_WIDTH*i + (j+1)] +
+125        img_data[IMG_WIDTH*(i+1) + (j-1)] - img_data[IMG_WIDTH*(i+1) + (j+1)]
+126      );
+127      
+128      // Calculate Gy
+129      int gy = abs(
+130        img_data[IMG_WIDTH*(i-1) + (j-1)] - img_data[IMG_WIDTH*(i+1) + (j-1)] +
+131        2*img_data[IMG_WIDTH*(i-1) + j] - 2*img_data[IMG_WIDTH*(i+1) + j] +
+132        img_data[IMG_WIDTH*(i-1) + (j+1)] - img_data[IMG_WIDTH*(i+1) + (j+1)]
+133      );
+134      
+135      // Combine and saturate
+136      int sobel = gx + gy;
+137      sobel = (sobel > 255) ? 255 : sobel;
+138      out_data[IMG_WIDTH*i + j] = sobel;
+139    }
+140  }
+141}
