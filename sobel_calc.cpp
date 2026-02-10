@@ -173,16 +173,16 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
       int16x8_t bot_right_s = vreinterpretq_s16_u16(vmovl_u8(bot_right));
       int16x8_t top_mid_s = vreinterpretq_s16_u16(vmovl_u8(top_mid));
       int16x8_t bot_mid_s = vreinterpretq_s16_u16(vmovl_u8(bot_mid));
-      // Calculate Gx
+      // calculate Gx
       int16x8_t gx_s = vsubq_s16(top_right_s, top_left_s);
       int16x8_t mid_diff = vsubq_s16(mid_right_s, mid_left_s);
       mid_diff = vshlq_n_s16(mid_diff, 1); // multiply by 2
       gx_s = vaddq_s16(gx_s, mid_diff);
       int16x8_t bot_diff = vsubq_s16(bot_right_s, bot_left_s);
       gx_s = vaddq_s16(gx_s, bot_diff);
-      // Take absolute value
+      // take absolute value
       int16x8_t gx_abs = vabsq_s16(gx_s);
-      // Calculate Gy = [-1 -2 -1; 0 0 0; 1 2 1]
+      // calculate Gy = [-1 -2 -1; 0 0 0; 1 2 1]
       // Gy = -top_left - 2*top_mid - top_right + bot_left + 2*bot_mid + bot_right
       int16x8_t gy_s = vsubq_s16(bot_left_s, top_left_s);
       int16x8_t vert_diff = vsubq_s16(bot_mid_s, top_mid_s);
@@ -197,7 +197,7 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
       // Convert back to unsigned for addition
       uint16x8_t sobel = vaddq_u16(vreinterpretq_u16_s16(gx_abs), vreinterpretq_u16_s16(gy_abs));
       
-      // Saturate to 255
+      // saturate to 255
       uint8x8_t result = vqmovn_u16(sobel);
       
       // Store result
@@ -205,7 +205,7 @@ void sobelCalc(Mat& img_gray, Mat& img_sobel_out)
     }
     
     for (; j < img_gray.cols - 1; j++) {
-      // Calculate Gx
+      // calculate Gx
       int gx = abs(
         img_data[IMG_WIDTH*(i-1) + (j-1)] - img_data[IMG_WIDTH*(i-1) + (j+1)] +
         2*img_data[IMG_WIDTH*i + (j-1)] - 2*img_data[IMG_WIDTH*i + (j+1)] +
