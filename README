@@ -5,3 +5,61 @@ Write a README file that contains the following:
 - A brief description of optimizations you tried, the outcome, and some explanation (why it worked / why it did not)
 - Report the final performance for both single thread and multithread (we will verify this with your code submission)
 - If you used AI tools, explain how you use it to help with the assignment
+
+
+Report: Javed Chowdhury, Cheyne Miller, ee180-8@ee180-8z.stanford.edu
+
+
+Contributions: Javed Chowdhury - Part 1, Cheyne Miller - Part 2
+
+Optimizations, outcome, explanation:
+
+Javed: 
+I optimized the image processing speed using the Cortex-A9 processor of the Zedboard with the help of hardware-specific parameters facilitated by both compiler and NEON SIMD programming. In the Makefile, I specified -mcpu=cortex-a9 for optimal instruction scheduling. I also specified –mfpu=neon-fp16 and -mfloat-abi=hard to utilize the 128-bit processing engine and efficient register-based argument passing. With the -O3 for extensive loop unrolling and -ftree-vectorize for further auto-vectorization optimization, these compiler flags allowed for efficient processing. In sobel_calc.cpp, I used the vld3q_u8 function to separate 16 BGR pixels into different registers in one line of code. I used vmull & vmlal to expand the 8-bit values into 16-bit accumulators so that there would be no overflow when I was calculating the weighted sums.  I normalized the results and made these results narrow again by using vshrn_n_u16. This alone provided a grayscale conversion time that was only 17.39% of the entire processing cycles I did integer division instead of using float by scaling the floats to ints and then back to flats after doing the calculations to avoid fpu. In the Sobel Edge Detection function, I used a sliding window approach. I loaded neighborhoods of 3×3 pixel values into the vectors so that I processed 8 pixels at a time. To confirm calculation worked when the gradient values were actually negative, I converted the unsigned pixel values into 16-bit integers. I used vabsq_s16 to calculate abs gradient values, while vshlq_n_s16 was used for the efficient computation of a bit-shifted multiply. I used vqmovn_u16 to make sure that results were in correct range. The instruction count per frame reduced to around 8.26 million, and the energy consumption reduced to 17.56 mJ per frame.  overall optimizations had the effect of putting the throughput at 79.73 FPS, which was a significant improvement of the original scalar version.
+
+(Single Thread)
+Percent of time per function
+Capture, 41.0117%
+Grayscale, 17.3937%
+Sobel, 20.7898%
+Display, 20.8048%
+
+Summary
+Frames per second, 79.732
+Cycles per frame, 1.13068e+07
+Energy per frames (mJ), 17.5588
+Total frames, 50
+
+Hardware Stats (Cap + Gray + Sobel + Display)
+Instructions per cycle, 0.737741
+L1 misses per frame, 124339
+L1 misses per instruction, 0.015055
+Instruction count per frame, 8.25899e+06
+
+AI Use: I used ai to help me understand the neon vectorization library and made sure that I was using the type properly (ie the type, how wide the vectors were, and how many lanes i should be using) for my strategy. I also used it to help me reason what each compiler flag did and which flags I should be leaving out after encountering some runtime errors with my implementation. 
+
+Cheyne:
+Optimization for multithreading tookn a domain decomposition approach, parallelizing sobelCalc and grayScale functions by dividing them into two regions of interest, distributing the workload across the two cores. To maintain integrity in the pipeline we used pthread_barrier_t for synchronization, preventing race conditions like from attempting to process capture data before completion. The outcome was an increase in frame rate from 79 single threaded to 99 multi-threaded, a 1.25x frame improvement where we saw a sharp decrease in time consumed by Grayscale and Sobel thanks to the parallelization (both of which had % time spent decrease by about 2x). Capture and Display did not change as they remain serial functions. This approach was not too difficult to implement using mutexes and properly waiting for threads and resulting in surpasing the required 87 threads for grading.
+
+Final Performance:
+Single Threaded:
+Multi-threaded:
+Percent of time per function
+Capture, 50.6231%
+Grayscale, 10.8635%
+Sobel, 12.616%
+Display, 25.8974%
+
+Summary
+Frames per second, 98.9348
+Cycles per frame, 9.24399e+06
+Energy per frames (mJ), 14.1507
+Total frames, 50
+
+Hardware Stats (Cap + Gray + Sobel + Display)
+Instructions per cycle, 0.918735
+L1 misses per frame, 154707
+L1 misses per instruction, 0.016199
+Instruction count per frame, 9.55039e+06
+
+Use of AI tools: Used to explain multithreading process/syntax and evaluate solutions.
